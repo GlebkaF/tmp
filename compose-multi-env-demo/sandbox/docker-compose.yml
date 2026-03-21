@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: sandbox
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  api:
+    build: ./api
+    environment:
+      ENV_ID: ${ENV_ID}
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/sandbox
+    depends_on:
+      - postgres
+    networks:
+      - internal
+      - traefik-public
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${ENV_ID}-api.rule=Host(`api.${ENV_ID}.${BASE_DOMAIN}`)
+      - traefik.http.services.${ENV_ID}-api.loadbalancer.server.port=8000
+
+  web:
+    build: ./web
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+    depends_on:
+      - api
+    networks:
+      - traefik-public
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${ENV_ID}-web.rule=Host(`${ENV_ID}.${BASE_DOMAIN}`)
+      - traefik.http.services.${ENV_ID}-web.loadbalancer.server.port=3000
+
+volumes:
+  pgdata:
+
+networks:
+  internal:
+  traefik-public:
+    external: true
