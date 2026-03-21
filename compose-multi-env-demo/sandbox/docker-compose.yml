@@ -14,6 +14,8 @@ services:
     environment:
       ENV_ID: ${ENV_ID}
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/sandbox
+    volumes:
+      - ./api:/app
     depends_on:
       - postgres
     networks:
@@ -28,6 +30,9 @@ services:
     build: ./web
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+    volumes:
+      - ./web:/app
+      - /app/node_modules
     depends_on:
       - api
     networks:
