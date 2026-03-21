@@ -3,7 +3,7 @@
 Минимальный пример для одной жирной машины, где можно поднимать много независимых dev-сред.
 
 Что внутри:
-- один общий `traefik` на хосте
+- один общий `caddy` на хосте (caddy-docker-proxy)
 - много sandbox-окружений через `docker compose -p <env_id>`
 - в каждом sandbox:
   - `api` (FastAPI)
@@ -34,19 +34,19 @@
 ## Структура
 
 ```text
-traefik/                  # общий reverse proxy на хосте
+caddy/                    # общий reverse proxy на хосте
 sandbox/                  # шаблон одной среды
 scripts/                  # create/destroy helpers
 ```
 
-## 1. Поднять Traefik один раз на хосте
+## 1. Поднять Caddy один раз на хосте
 
 ```bash
-cd traefik
+cd caddy
 docker compose up -d
 ```
 
-Traefik слушает `80`, читает Docker labels и маршрутизирует трафик в нужные контейнеры.
+Caddy слушает `80`, читает Docker labels и маршрутизирует трафик в нужные контейнеры.
 
 ## 2. Поднять sandbox
 
@@ -70,14 +70,14 @@ BASE_DOMAIN=dev.localtest.me POSTGRES_PASSWORD=postgres ./scripts/create-env.sh 
 
 ## Как это работает
 
-### Traefik
+### Caddy
 
-Traefik живёт отдельно и постоянно. Новые sandbox-окружения не редактируют его конфиг руками. Вместо этого `web` и `api` получают Docker labels, например:
+Caddy живёт отдельно и постоянно. Новые sandbox-окружения не редактируют его конфиг руками. Вместо этого `web` и `api` получают Docker labels, например:
 
 - `env-101.dev.localtest.me`
 - `api.env-101.dev.localtest.me`
 
-Traefik видит эти labels через Docker provider и автоматически публикует маршруты.
+Caddy видит эти labels через caddy-docker-proxy и автоматически публикует маршруты.
 
 ### Compose per environment
 
