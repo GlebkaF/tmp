@@ -11,25 +11,36 @@
   - `postgres`
 - красивые URL вместо сырых портов
 
-## Идея
+## Быстрый старт
 
-Один sandbox = один compose project.
+```bash
+./scripts/create-env.sh env-101
+```
 
-Примеры:
+Одна команда — и всё готово. Скрипт сам:
+1. Поднимет Caddy (если ещё не запущен)
+2. Запустит sandbox-окружение
+3. Выведет URL-ы
+
+Можно поднять сколько угодно сред:
 
 ```bash
 ./scripts/create-env.sh env-101
 ./scripts/create-env.sh env-102
 ```
 
-После этого, если у тебя настроен wildcard DNS на хост, будут доступны URL:
+URL-ы:
 
 - `http://env-101.dev.localtest.me` -> web
 - `http://api.env-101.dev.localtest.me` -> api
-- `http://env-102.dev.localtest.me` -> web
-- `http://api.env-102.dev.localtest.me` -> api
 
 `localtest.me` резолвится в `127.0.0.1`, так что для локальной отладки это удобно. Для внутренней сети замени `BASE_DOMAIN` на свой домен, например `dev.internal`.
+
+## Удалить sandbox
+
+```bash
+./scripts/destroy-env.sh env-101
+```
 
 ## Структура
 
@@ -39,45 +50,20 @@ sandbox/                  # шаблон одной среды
 scripts/                  # create/destroy helpers
 ```
 
-## 1. Поднять Caddy один раз на хосте
-
-```bash
-cd caddy
-docker compose up -d
-```
-
-Caddy слушает `80`, читает Docker labels и маршрутизирует трафик в нужные контейнеры.
-
-## 2. Поднять sandbox
-
-Из корня проекта:
-
-```bash
-./scripts/create-env.sh env-101
-```
-
-С параметрами:
-
-```bash
-BASE_DOMAIN=dev.localtest.me POSTGRES_PASSWORD=postgres ./scripts/create-env.sh env-101
-```
-
-## 3. Удалить sandbox
-
-```bash
-./scripts/destroy-env.sh env-101
-```
-
 ## Как это работает
 
 ### Caddy
 
-Caddy живёт отдельно и постоянно. Новые sandbox-окружения не редактируют его конфиг руками. Вместо этого `web` и `api` получают Docker labels, например:
+Caddy живёт отдельно и постоянно. `create-env.sh` поднимает его автоматически при первом запуске. Новые sandbox-окружения не редактируют его конфиг руками. Вместо этого `web` и `api` получают Docker labels, например:
 
 - `env-101.dev.localtest.me`
 - `api.env-101.dev.localtest.me`
 
 Caddy видит эти labels через caddy-docker-proxy и автоматически публикует маршруты.
+
+### SSR
+
+Web-контейнер использует `extra_hosts` с `host-gateway`, чтобы домен `api.*.dev.localtest.me` резолвился в хост-машину (а не в `127.0.0.1` внутри контейнера). Это позволяет `getServerSideProps` ходить в API через Caddy.
 
 ### Compose per environment
 
@@ -92,12 +78,9 @@ Compose сам изолирует контейнеры, сети и тома п�
 
 ## Переменные
 
-Основные переменные:
-
 - `ENV_ID` — идентификатор среды, например `env-101`
 - `BASE_DOMAIN` — базовый домен, по умолчанию `dev.localtest.me`
 - `POSTGRES_PASSWORD` — пароль Postgres, по умолчанию `postgres`
-- `NEXT_PUBLIC_API_BASE_URL` — URL API, автоматически собирается в `create-env.sh`
 
 ## Что здесь упрощено
 
@@ -107,13 +90,3 @@ Compose сам изолирует контейнеры, сети и тома п�
 - ClickHouse / Redis
 - auth
 - TTL / garbage collection
-
-Но как базовый шаблон под твою идею это уже рабочая схема.
-
-## Дальше что можно докрутить
-
-1. Добавить Redis/ClickHouse в `sandbox/docker-compose.yml`
-2. Добавить init-контейнер для миграций
-3. Генерировать уникальный пароль/БД на каждую среду
-4. Повесить cleanup по TTL
-5. Добавить `Makefile`

@@ -10,18 +10,21 @@ ENV_ID="$1"
 BASE_DOMAIN="${BASE_DOMAIN:-dev.localtest.me}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-postgres}"
 
-export ENV_ID
-export BASE_DOMAIN
-export POSTGRES_PASSWORD
+export ENV_ID BASE_DOMAIN POSTGRES_PASSWORD
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE_FILE="$ROOT_DIR/sandbox/docker-compose.yml"
 
+# ── 1. Ensure Caddy is running (idempotent) ──
+printf '[1/3] Ensuring Caddy is up\n'
+docker compose -p caddy -f "$ROOT_DIR/caddy/docker-compose.yml" up -d
+
+# ── 2. Start sandbox ──
 export NEXT_PUBLIC_API_BASE_URL="http://api.${ENV_ID}.${BASE_DOMAIN}"
 
-printf '\n[1/2] Starting sandbox %s\n' "$ENV_ID"
-docker compose -p "$ENV_ID" -f "$COMPOSE_FILE" up -d --build
+printf '\n[2/3] Starting sandbox %s\n' "$ENV_ID"
+docker compose -p "$ENV_ID" -f "$ROOT_DIR/sandbox/docker-compose.yml" up -d --build
 
-printf '\n[2/2] Sandbox URLs\n'
+# ── 3. Print URLs ──
+printf '\n[3/3] Sandbox URLs\n'
 printf 'web: http://%s.%s\n' "$ENV_ID" "$BASE_DOMAIN"
 printf 'api: http://api.%s.%s/health\n' "$ENV_ID" "$BASE_DOMAIN"

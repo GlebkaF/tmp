@@ -29,6 +29,8 @@ services:
     build: ./web
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+    extra_hosts:
+      - "api.${ENV_ID}.${BASE_DOMAIN}:host-gateway"
     volumes:
       - ./web:/app
       - /app/node_modules
