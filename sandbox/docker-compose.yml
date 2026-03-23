@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: sandbox
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  api:
+    build: ./api
+    environment:
+      ENV_ID: ${ENV_ID}
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/sandbox
+    volumes:
+      - ./api:/app
+    depends_on:
+      - postgres
+    networks:
+      - internal
+      - caddy-public
+    labels:
+      caddy: api.${ENV_ID}.${BASE_DOMAIN}
+      caddy.reverse_proxy: "{{upstreams 8000}}"
+
+  web:
+    build: ./web
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+    extra_hosts:
+      - "api.${ENV_ID}.${BASE_DOMAIN}:host-gateway"
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    networks:
+      - caddy-public
+    labels:
+      caddy: ${ENV_ID}.${BASE_DOMAIN}
+      caddy.reverse_proxy: "{{upstreams 3000}}"
+
+volumes:
+  pgdata:
+
+networks:
+  internal:
+  caddy-public:
+    external: true
